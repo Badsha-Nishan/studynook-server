@@ -72,6 +72,17 @@ async function run() {
       res.json(result);
     });
 
+    app.patch("/rooms/:id", async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+      const result = await roomCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
+      );
+      console.log(updatedData);
+      res.json(result);
+    });
+
     app.post("/rooms", async (req, res) => {
       const roomData = req.body;
       console.log(roomData);
