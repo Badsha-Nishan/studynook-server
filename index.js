@@ -83,6 +83,13 @@ async function run() {
       res.json(result);
     });
 
+    app.delete("/rooms/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await roomCollection.deleteOne({ _id: new ObjectId(id) });
+
+      res.json(result);
+    });
+
     app.post("/rooms", async (req, res) => {
       const roomData = req.body;
       console.log(roomData);
