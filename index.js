@@ -79,7 +79,7 @@ async function run() {
         { _id: new ObjectId(id) },
         { $set: updatedData }
       );
-      console.log(updatedData);
+      // console.log(updatedData);
       res.json(result);
     });
 
@@ -92,20 +92,20 @@ async function run() {
 
     app.post("/rooms", async (req, res) => {
       const roomData = req.body;
-      console.log(roomData);
+      // console.log(roomData);
       const result = await roomCollection.insertOne(roomData);
 
       res.json(result);
     });
 
-    app.post("/bookings", verifyToken, async (req, res) => {
+    app.post("/my-bookings", async (req, res) => {
       const bookingData = req.body;
       const result = await bookingsCollection.insertOne(bookingData);
 
       res.json(result);
     });
 
-    app.get("/bookings/:userId", async (req, res) => {
+    app.get("/my-bookings/:userId", async (req, res) => {
       const { userId } = req.params;
 
       const result = await bookingsCollection
@@ -113,6 +113,16 @@ async function run() {
         .toArray();
 
       res.json(result);
+    });
+
+    app.delete("/my-bookings/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) };
+
+      const result = await bookingsCollection.deleteOne(query);
+
+      res.send(result);
     });
 
     app.delete("/bookings/:bookingId", async (req, res) => {
