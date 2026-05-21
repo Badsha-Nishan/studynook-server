@@ -4,7 +4,8 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 dotenv.config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const { createRemoteJWKSet, jwtVerify } = require("jose");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
+// const { createRemoteJWKSet, jwtVerify } = require("jose");
 const PORT = process.env.PORT;
 
 app.use(cors());
@@ -19,23 +20,20 @@ const client = new MongoClient(uri, {
   },
 });
 
-const JWKS = createRemoteJWKSet(
-  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
-);
+const JWKS = createRemoteJWKSet(new URL("http://localhost:3000/api/auth/jwks"));
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req?.headers.authorization;
+
   if (!authHeader) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   const token = authHeader.split(" ")[1];
-
-  console.log(token);
-
   if (!token) {
     return res.status(401).json({ message: "Unauthorized" });
   }
+  // console.log(token);
 
   try {
     const { payload } = await jwtVerify(token, JWKS);
@@ -64,7 +62,7 @@ async function run() {
       res.json(result);
     });
 
-    app.get("/rooms/:id", async (req, res) => {
+    app.get("/rooms/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await roomCollection.findOne({
         _id: new ObjectId(id),
@@ -83,16 +81,17 @@ async function run() {
       res.json(result);
     });
 
-    app.delete("/rooms/:id", async (req, res) => {
+    app.delete("/rooms/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await roomCollection.deleteOne({ _id: new ObjectId(id) });
 
       res.json(result);
     });
 
-    app.post("/rooms", async (req, res) => {
+    app.post("/rooms", verifyToken, async (req, res) => {
       const roomData = req.body;
       // console.log(roomData);
+
       const result = await roomCollection.insertOne(roomData);
 
       res.json(result);
@@ -100,9 +99,31 @@ async function run() {
 
     app.post("/my-bookings", async (req, res) => {
       const bookingData = req.body;
-      const result = await bookingsCollection.insertOne(bookingData);
+      const { roomId, date, startTime, endTime } = bookingData;
 
-      res.json(result);
+      try {
+        const conflict = await bookingsCollection.findOne({
+          roomId: roomId,
+          date: date,
+          status: "confirmed",
+          startTime: { $lt: endTime },
+          endTime: { $gt: startTime },
+        });
+        if (conflict) {
+          return res.status(400).json({
+            success: false,
+            message: "This room is already booked for the selected time slot.",
+          });
+        }
+        const result = await bookingsCollection.insertOne({
+          ...bookingData,
+          status: "confirmed",
+        });
+
+        res.status(201).json({ success: true, ...result });
+      } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+      }
     });
 
     app.get("/my-bookings/:userId", async (req, res) => {
@@ -115,7 +136,7 @@ async function run() {
       res.json(result);
     });
 
-    app.delete("/my-bookings/:id", async (req, res) => {
+    app.delete("/my-bookings/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       const query = { _id: new ObjectId(id) };
@@ -123,15 +144,6 @@ async function run() {
       const result = await bookingsCollection.deleteOne(query);
 
       res.send(result);
-    });
-
-    app.delete("/bookings/:bookingId", async (req, res) => {
-      const { bookingId } = req.params;
-      const result = await bookingsCollection.deleteOne({
-        _id: new ObjectId(bookingId),
-      });
-
-      res.json(result);
     });
 
     // await client.db("admin").command({ ping: 1 });
