@@ -20,7 +20,9 @@ const client = new MongoClient(uri, {
   },
 });
 
-const JWKS = createRemoteJWKSet(new URL("http://localhost:3000/api/auth/jwks"));
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
+);
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req?.headers.authorization;
@@ -62,7 +64,7 @@ async function run() {
       res.json(result);
     });
 
-    app.get("/rooms/:id", verifyToken, async (req, res) => {
+    app.get("/rooms/:id", async (req, res) => {
       const { id } = req.params;
       const result = await roomCollection.findOne({
         _id: new ObjectId(id),
@@ -88,7 +90,7 @@ async function run() {
       res.json(result);
     });
 
-    app.post("/rooms", verifyToken, async (req, res) => {
+    app.post("/rooms", async (req, res) => {
       const roomData = req.body;
       // console.log(roomData);
 
